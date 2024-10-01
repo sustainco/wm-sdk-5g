@@ -155,7 +155,7 @@ int usart2_clear_buffer(void){
     while(NRF_UARTE1->EVENTS_RXTO != 1){}
 
     /* Clear buffer*/
-    memset(usart2_m_rx_buffer, 0, sizeof(rx_buffer));
+    memset(usart2_m_rx_buffer, 0, sizeof(usart2_m_rx_buffer));
 
     /* Start RX*/
     NRF_UARTE1->EVENTS_RXSTARTED = 0;
