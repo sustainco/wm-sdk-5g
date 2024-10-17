@@ -74,8 +74,33 @@ include $(MCU_PATH)common/makefile
 #
 # Sources & includes paths
 #
-SRCS += $(APP_SRCS_PATH)app.c
+SRCS += $(APP_SRCS_PATH)app.c 
+SRCS += $(APP_SRCS_PATH)fsm/fsm.c
+SRCS += $(APP_SRCS_PATH)data/meter/meter_data.c
+SRCS += $(APP_SRCS_PATH)data/token/token_injection_response.c
+SRCS += $(APP_SRCS_PATH)queues/queue.c
+SRCS += $(APP_SRCS_PATH)queues/token_injection_response_queue/token_injection_response_queue.c
+SRCS += $(APP_SRCS_PATH)utils/command_builder/command_builder.c 
+SRCS += $(APP_SRCS_PATH)utils/meter_hex_to_int/meter_hex_to_int.c 
+SRCS += $(APP_SRCS_PATH)utils/circular_buffer/circular_buffer.c
+SRCS += $(APP_SRCS_PATH)drivers/meter/enlight/enlight.c
+SRCS += $(APP_SRCS_PATH)drivers/time/delay_timer/delay_timer.c 
+SRCS += $(APP_SRCS_PATH)services/controllers/meter_controller/meter_controller.c 
+
 INCLUDES += -I$(API_PATH) -I$(APP_SRCS_PATH)include -I$(UTIL_PATH)
+INCLUDES += -I$(APP_SRCS_PATH)fsm
+INCLUDES += -I$(APP_SRCS_PATH)data/meter  
+INCLUDES += -I$(APP_SRCS_PATH)data/token
+INCLUDES += -I$(APP_SRCS_PATH)queues
+INCLUDES += -I$(APP_SRCS_PATH)queues/token_injection_response_queue
+INCLUDES += -I$(APP_SRCS_PATH)queues/token_recv_queue
+INCLUDES += -I$(APP_SRCS_PATH)utils/command_builder
+INCLUDES += -I$(APP_SRCS_PATH)utils/meter_hex_to_int
+INCLUDES += -I$(APP_SRCS_PATH)utils/circular_buffer
+INCLUDES += -I$(APP_SRCS_PATH)drivers/meter/enlight
+INCLUDES += -I$(APP_SRCS_PATH)drivers/time/delay_timer
+INCLUDES += -I$(APP_SRCS_PATH)services/controllers/meter_controller
+
 
 # Objects list
 OBJS_ = $(SRCS:.c=.o) $(ASM_SRCS:.s=.o)
