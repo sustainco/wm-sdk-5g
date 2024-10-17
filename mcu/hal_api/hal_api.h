@@ -22,6 +22,9 @@
 // USART driver
 #include "usart.h"
 
+// USART2 driver
+#include "usart2.h"
+
 // Deep sleep control
 #include "ds.h"
 
