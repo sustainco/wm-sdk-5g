@@ -60,6 +60,12 @@ P0.31   31      gpio/SCL                I2C
 #define BOARD_USART_CTS_PIN             15  /* For USE_USART_HW_FLOW_CONTROL */
 #define BOARD_USART_RTS_PIN             14  /* For USE_USART_HW_FLOW_CONTROL */
 
+// Serial port pins for UART2
+#define BOARD_USART2_TX_PIN              29
+#define BOARD_USART2_RX_PIN              28
+// #define BOARD_USART2_CTS_PIN             0  /* For USE_USART_HW_FLOW_CONTROL */
+// #define BOARD_USART2_RTS_PIN             0  /* For USE_USART_HW_FLOW_CONTROL */
+
 // List of GPIO pins
 #define BOARD_GPIO_PIN_LIST            {0,  /* P0.00 LED-1 */\
                                         1,  /* P0.01 LED-2 */\
