@@ -164,8 +164,8 @@ static int energy_meter_update_realtime_data(meter_t* self) {
 		
 	}
 
-    get_meter_data_instance()->kwh_consumed = extract_hex_value(data_receive_buffer[0]) * 0.1;
-    get_meter_data_instance()->available_credit = extract_hex_value(data_receive_buffer[1]) * 0.1;
+    get_meter_data_instance()->kwh_consumed = extract_hex_value(data_receive_buffer[0]);
+    get_meter_data_instance()->available_credit = extract_hex_value(data_receive_buffer[1]);
     get_meter_data_instance()->kwh_forward = 0;
     get_meter_data_instance()->kwh_reverse = 0;
     get_meter_data_instance()->peak_demand = 0;
