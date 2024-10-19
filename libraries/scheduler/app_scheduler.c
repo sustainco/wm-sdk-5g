@@ -23,7 +23,7 @@ static bool m_initialized = false;
 #define EXECUTION_TIME_NEEDED_FOR_SCHEDULING_US    35
 
 /** Maximum execution time application can request from stack (100ms) */
-#define MAX_EXECUTION_TIME_ALLOWED_BY_STACK_US (100 * 1000)
+#define MAX_EXECUTION_TIME_ALLOWED_BY_STACK_US (1800 * 1000)
 
 typedef struct
 {

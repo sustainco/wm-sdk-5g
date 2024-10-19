@@ -24,10 +24,16 @@
 #include "shared_data.h"
 #include "app_scheduler.h"
 
+#include "enlight.h"
+#include "delay_timer.h"
+
+#include "meter_controller.h"
+#include "token_injection_response_queue.h"
+#include <token_recv_queue.h>
 
 #define DEBUG_LOG_MODULE_NAME "EVAL_APP"
 /** To activate logs, configure the following line with "LVL_INFO". */
-#define DEBUG_LOG_MAX_LEVEL LVL_NOLOG
+#define DEBUG_LOG_MAX_LEVEL LVL_INFO
 
 #include "debug_log.h"
 
@@ -49,12 +55,34 @@
 #define CUSTOM_PERIOD_TYPE 0xC3
 
 /** Time needed to execute the periodic work, in us. */
-#define PERIODIC_WORK_EXECUTION_TIME_US (250u)
+#define PERIODIC_WORK_EXECUTION_TIME_US (1500u)
 
 /** Button pressed event ID. */
 #define BUTTON_PRESSED_STATE  (2u)
 /** Time needed to execute the send "button pressed message" task, in us. */
 #define TASK_EXEC_TIME_US_SEND_BUTTON_PRESSED_MSG (250u)
+
+/**
+ * @brief Meter State Machine object
+ * 
+ */
+MeterStateMachine msm;
+
+/**
+ * @brief Token injection response queue storage buffer
+ * 
+ */
+token_injection_response_t token_injection_response_queue_storage[TOKEN_INJECTION_REPONSE_QUEUE_SIZE];
+
+/**
+ * @brief Queue to hold token injection data
+ * 
+ */
+generic_queue_t token_injection_response_queue;
+
+token_t token_rcv_queue_storage[TOKEN_RCV_QUEUE_SIZE];
+
+generic_queue_t token_rcv_queue;
 
 
 /**
@@ -113,6 +141,8 @@ typedef enum
     MSG_ID_LED_GET_STATE_MSG = 130,
     /** Evaluation app "Echo command" message ID. */
     MSG_ID_ECHO_COMMAND_MSG = 131,
+    /** Token injection response message ID  */
+    MSG_ID_TOKEN_INJECTION_RESPONSE_MSG = 23,
 } message_id_e;
 
 
@@ -129,10 +159,19 @@ typedef enum
 typedef struct __attribute__((packed))
 {
     /** Running counter value. */
-    uint32_t counter_value;
+    meter_data_t meter_data;
     /** Easy to spot data pattern. */
     uint8_t data_pattern[PERIODIC_MSG_DATA_PATTERN_LEN];
 } payload_periodic_t;
+
+
+typedef struct __attribute__((packed))
+{
+    token_injection_response_t resp;
+    /** Easy to spot data pattern. */
+    uint8_t data_pattern[PERIODIC_MSG_DATA_PATTERN_LEN];
+} payload_token_injection_t;
+
 
 /** @brief Periodic message set period payload data structure. */
 typedef struct __attribute__((packed))
@@ -200,6 +239,7 @@ typedef struct __attribute__((packed))
         payload_led_state_set_t          led_state_set;
         payload_led_state_get_t          led_state_get;
         payload_response_led_state_get_t resp_led_state_get;
+        payload_token_injection_t        token_injection_resp;
     } payload;
 } msg_t;
 
@@ -299,6 +339,14 @@ static app_lib_data_send_res_e send_uplink_msg(message_id_e id,
 
             msg_byte_size += sizeof(payload_response_led_state_get_t);
             break;
+        case MSG_ID_TOKEN_INJECTION_RESPONSE_MSG:
+            memcpy(&msg.payload.token_injection_resp,
+                    (payload_token_injection_t*)payload,
+                    sizeof(payload_token_injection_t));
+
+            msg_byte_size += sizeof(payload_token_injection_t);
+            break;
+
         default:
             /* Invalid message ID given : send only invalid msg ID. */
             break;
@@ -333,13 +381,17 @@ static app_lib_data_send_res_e send_uplink_msg(message_id_e id,
  */
 static uint32_t task_send_periodic_msg(void)
 {
-    static uint32_t counter_value = 0;
-    payload_periodic_t payload; /* Message payload data. */
+    payload_periodic_t payload;
 
-    payload.counter_value = counter_value;
+    meter_data_t *data_instance = get_meter_data_instance();
+
+    payload.meter_data = *data_instance;
     memcpy(payload.data_pattern,
            m_periodic_data_pattern,
            sizeof(m_periodic_data_pattern));
+
+
+    LOG(LVL_INFO, "Sending packet\n");
 
     /* Send message. */
     if (send_uplink_msg(MSG_ID_PERIODIC_MSG,
@@ -349,17 +401,80 @@ static uint32_t task_send_periodic_msg(void)
          * Message was not accepted for sending.
          * Error handling can be performed here.
          */
+
     }
 
-    /* Increment value to send. */
-    counter_value++;
+    if(!queue_is_empty(&token_injection_response_queue)){
+
+        token_injection_response_t resp;
+
+        queue_pop(&token_injection_response_queue, &resp);
+
+        payload_token_injection_t pyld;
+
+        pyld.resp = resp;
+
+        memcpy(pyld.data_pattern,
+            m_periodic_data_pattern,
+            sizeof(m_periodic_data_pattern));
+
+        LOG(LVL_INFO, "Sending injection response\n");
+
+        /* Send message. */
+        if (send_uplink_msg(MSG_ID_TOKEN_INJECTION_RESPONSE_MSG,
+                            (uint8_t *)&pyld) != APP_LIB_DATA_SEND_RES_SUCCESS)
+        {
+            /*
+            * Message was not accepted for sending.
+            * Error handling can be performed here.
+            */
+
+        }
+
+    }
 
     /*
      * Inform the stack that this function should be called again in
      * m_period_ms milliseconds. By returning APP_SCHEDULER_STOP_TASK,
      * the scheduler will remove the task.
      */
-    return m_period_ms;
+    return DEFAULT_PERIOD_MS;
+}
+
+
+static uint32_t logger_task(void){
+
+    run_meter_state_machine(&msm); // Tick the state machin
+
+    // LOG(LVL_ERROR, "TICK\n");
+
+    if(!queue_is_empty(&token_injection_response_queue)){
+
+        token_injection_response_t resp;
+
+        queue_pop(&token_injection_response_queue, &resp);
+
+        payload_token_injection_t pyld;
+
+        pyld.resp = resp;
+
+        memcpy(pyld.data_pattern,
+            m_periodic_data_pattern,
+            sizeof(m_periodic_data_pattern));
+
+        /* Send message. */
+        if (send_uplink_msg(MSG_ID_TOKEN_INJECTION_RESPONSE_MSG,
+                            (uint8_t *)&pyld) != APP_LIB_DATA_SEND_RES_SUCCESS)
+        {
+            /*
+            * Message was not accepted for sending.
+            * Error handling can be performed here.
+            */
+
+        }
+
+    }
+    return DEFAULT_PERIOD_MS;
 }
 
 /**
@@ -565,6 +680,8 @@ static app_lib_data_receive_res_e unicast_broadcast_data_received_cb(
     msg_t msg = *((msg_t *)data->bytes);
     uint8_t msg_size = data->num_bytes;
 
+    LOG(LVL_INFO, "Received %d bytes\n", msg_size);
+
     if ((msg_size < sizeof(msg.id)))
     {
         /* Data is not for this application. */
@@ -572,6 +689,9 @@ static app_lib_data_receive_res_e unicast_broadcast_data_received_cb(
     }
 
     msg_size -= sizeof(msg.id);
+
+    uint64_t extracted_serial = 0;
+    char received_token[20];
 
     /* Process incoming message according to message ID. */
     switch (msg.id)
@@ -609,6 +729,27 @@ static app_lib_data_receive_res_e unicast_broadcast_data_received_cb(
                 send_led_state(msg.payload.led_state_get.led_id);
             }
             break;
+        
+        case 0xFE:
+
+            for (int i = 0; i < 5; ++i) {
+                extracted_serial = (extracted_serial << 8) | data->bytes[1 + i];  // MSB-first approach
+            }
+
+            if(extracted_serial == get_meter_data_instance()->serial){
+
+                LOG(LVL_INFO, "Token Injection Serial Match, Jolly good\n");
+
+                memcpy(received_token, &data->bytes[6],20);
+
+                token_t received_token_obj;
+
+                received_token_obj.serial = extracted_serial;
+                strncpy(received_token_obj.token, received_token, 20);
+
+                queue_push(&token_rcv_queue, &received_token_obj);
+
+            }
 
         default:    /* Unknown message ID : do nothing. */
             break;
@@ -687,7 +828,7 @@ void App_init(const app_global_functions_t * functions)
          * Could not configure the node.
          * It should not happen except if one of the config value is invalid.
          */
-        return;
+        // return;
     }
 
     num_buttons = Button_get_number();
@@ -705,10 +846,34 @@ void App_init(const app_global_functions_t * functions)
     App_Scheduler_addTask_execTime(task_send_periodic_msg,
                                    APP_SCHEDULER_SCHEDULE_ASAP,
                                    PERIODIC_WORK_EXECUTION_TIME_US);
+    
+     /* Reschedule task to apply new period value. */
+    App_Scheduler_addTask_execTime(logger_task,
+                                    APP_SCHEDULER_SCHEDULE_ASAP,
+                                    PERIODIC_WORK_EXECUTION_TIME_US);
 
     /* Set unicast & broadcast received messages callback. */
     Shared_Data_addDataReceivedCb(&unicast_packets_filter);
     Shared_Data_addDataReceivedCb(&broadcast_packets_filter);
+
+    /**
+     * @brief Initialize token injection response_queue
+     * 
+     */
+    queue_init(&token_injection_response_queue, token_injection_response_queue_storage, sizeof(token_injection_response_t), TOKEN_INJECTION_REPONSE_QUEUE_SIZE);
+
+    /**
+     * @brief Initialize token injection response_queue
+     * 
+     */
+    queue_init(&token_rcv_queue, token_rcv_queue_storage, sizeof(token_t), TOKEN_RCV_QUEUE_SIZE);
+
+
+    /**
+     * @brief Initialize Meter State Machine
+     * 
+     */
+    init_meter_state_machine(&msm, METER_STATE_IDLE);
 
     /*
      * Start the stack.

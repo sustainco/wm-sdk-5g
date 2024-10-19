@@ -7,10 +7,10 @@
 /**
  * @file
  * Board definition for the
- * <a href="https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/dev-kits/nrf9161-dk/hardware-files/pca10153-nrf9161-development-board-0_9_0.zip"></a>
+ * <a href="https://nsscprodmedia.blob.core.windows.net/prod/software-and-other-downloads/dev-kits/nrf9161-dk/hardware-files/DANI-nrf9161-development-board-0_9_0.zip"></a>
  */
-#ifndef BOARD_PCA10153_BOARD_H_
-#define BOARD_PCA10153_BOARD_H_
+#ifndef BOARD_DANI_BOARD_H_
+#define BOARD_DANI_BOARD_H_
 
 
 
@@ -18,7 +18,7 @@
 // With nrf_gpio.h, use SW_pin (logical pins, port-aware)
 
 /**
-NRF_P0  SW_pin  PCA10153                Notes (recommended usage)
+NRF_P0  SW_pin  DANI                Notes (recommended usage)
 ------------------------------------------------------------------------
 P0.00    0      gpio/LED-1
 P0.01    1      gpio/LED-2
@@ -121,4 +121,4 @@ P0.31   31      gpio/SCL                I2C
 // Enable external flash memory debugging using LEDs.
 #define EXT_FLASH_DRIVER_DEBUG_LED
 
-#endif /* BOARD_PCA10153_BOARD_H_ */
+#endif /* BOARD_DANI_BOARD_H_ */

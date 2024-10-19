@@ -18,3 +18,6 @@ SRCS += $(NRF91_HAL_PREFIX)i2c.c
 endif
 
 SRCS += $(NRF91_HAL_PREFIX)power.c
+
+SRCS += $(NRF91_HAL_PREFIX)usart2_dma.c
+

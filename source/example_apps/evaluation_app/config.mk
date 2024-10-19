@@ -1,5 +1,5 @@
 # Boards compatible with this app 
-TARGET_BOARDS := pca10153 pca20049 pca20064 
+TARGET_BOARDS := pca10153 pca20049 pca20064 dani
 # Boards compatible with this app
 #
 # Network default settings configuration
